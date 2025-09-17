@@ -1,0 +1,98 @@
+name: Build and Tag Container for PR
+
+on:
+  workflow_call:
+    inputs:
+      runs_on:
+        description: 'Runner label or array of runner labels'
+        required: true
+        type: string
+      install_go_version:
+        description: 'Go version to install'
+        required: false
+        type: string
+        default: '1.23.3'
+      golangci_lint_version:
+        description: 'Golangci-lint version'
+        required: false
+        type: string
+        default: 'v1.62.0'
+      image_prefix:
+        description: 'Docker image prefix'
+        required: true
+        type: string
+      build_opt:
+        description: 'Docker build options'
+        required: false
+        type: string
+        default: '--no-cache --pull'
+      test_command:
+        description: 'Test command to run (test or go-test)'
+        required: false
+        type: string
+        default: 'go-test'
+      aws_xray_sdk_disabled:
+        description: 'Disable AWS X-Ray SDK'
+        required: false
+        type: string
+        default: 'false'
+    secrets:
+      DOCKER_USER:
+        description: 'Docker Hub username'
+        required: true
+      DOCKER_TOKEN:
+        description: 'Docker Hub token'
+        required: true
+      DOCKER_REGISTRY:
+        description: 'Docker registry URL'
+        required: true
+
+jobs:
+  build:
+    runs-on: ${{ inputs.runs_on }}
+    env:
+      IMAGE_PREFIX: ${{ inputs.image_prefix }}
+      BUILD_OPT: ${{ inputs.build_opt }}
+      AWS_XRAY_SDK_DISABLED: ${{ inputs.aws_xray_sdk_disabled }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup environment
+        run: |
+          echo "SRC=${GITHUB_WORKSPACE}/src" >> $GITHUB_ENV
+          echo "BUILD_OPT=${{ inputs.build_opt }}" >> $GITHUB_ENV
+          echo "TAG=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+      
+      - name: Install Go and tools
+        run: |
+          cd /root/.goenv && git pull && cd -
+          goenv install ${{ inputs.install_go_version }}
+          goenv global ${{ inputs.install_go_version }}
+          go version
+          
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin ${{ inputs.golangci_lint_version }}
+          mv $(go env GOPATH)/bin/golangci-lint /usr/local/bin/
+          golangci-lint --version
+      
+      - name: Lint and test
+        run: |
+          echo "Lint the sources..."
+          make lint -k
+          echo "Testing the sources..."
+          make ${{ inputs.test_command }} -j
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+      
+      - name: Docker build and tag
+        run: |
+          echo "Build started on $(date)"
+          make build-ci -j BUILD_OPT="${BUILD_OPT}" IMAGE_TAG=${TAG} IMAGE_PREFIX=${IMAGE_PREFIX} IMAGE_REGISTRY=${{ secrets.DOCKER_REGISTRY }}
