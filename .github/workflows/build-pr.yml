@@ -11,12 +11,12 @@ on:
         description: 'Go version to install'
         required: false
         type: string
-        default: '1.21.3'
+        default: '1.23.3'
       golangci_lint_version:
         description: 'Golangci-lint version'
         required: false
         type: string
-        default: 'v1.55.2'
+        default: 'v1.62.0'
       image_prefix:
         description: 'Docker image prefix'
         required: true
@@ -31,6 +31,11 @@ on:
         required: false
         type: string
         default: 'go-test'
+      aws_xray_sdk_disabled:
+        description: 'Disable AWS X-Ray SDK'
+        required: false
+        type: string
+        default: 'false'
     secrets:
       DOCKER_USER:
         description: 'Docker Hub username'
@@ -48,6 +53,7 @@ jobs:
     env:
       IMAGE_PREFIX: ${{ inputs.image_prefix }}
       BUILD_OPT: ${{ inputs.build_opt }}
+      AWS_XRAY_SDK_DISABLED: ${{ inputs.aws_xray_sdk_disabled }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -90,4 +96,3 @@ jobs:
         run: |
           echo "Build started on $(date)"
           make build-ci -j BUILD_OPT="${BUILD_OPT}" IMAGE_TAG=${TAG} IMAGE_PREFIX=${IMAGE_PREFIX} IMAGE_REGISTRY=${{ secrets.DOCKER_REGISTRY }}
-
