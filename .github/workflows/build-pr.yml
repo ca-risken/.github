@@ -67,7 +67,7 @@ jobs:
       - name: Install Go and tools
         run: |
           cd /root/.goenv && git pull && cd -
-          goenv install ${{ inputs.install_go_version }}
+          goenv install ${{ inputs.install_go_version }} -s
           goenv global ${{ inputs.install_go_version }}
           go version
           
