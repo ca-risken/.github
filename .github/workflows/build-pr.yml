@@ -21,16 +21,6 @@ on:
         description: 'Docker image prefix'
         required: true
         type: string
-      build_opt:
-        description: 'Docker build options'
-        required: false
-        type: string
-        default: '--no-cache --pull'
-      test_command:
-        description: 'Test command to run (test or go-test)'
-        required: false
-        type: string
-        default: 'go-test'
       aws_xray_sdk_disabled:
         description: 'Disable AWS X-Ray SDK'
         required: false
@@ -61,7 +51,7 @@ jobs:
       - name: Setup environment
         run: |
           echo "SRC=${GITHUB_WORKSPACE}/src" >> $GITHUB_ENV
-          echo "BUILD_OPT=${{ inputs.build_opt }}" >> $GITHUB_ENV
+          echo "BUILD_OPT='--no-cache --pull'" >> $GITHUB_ENV
           echo "TAG=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
       
       - name: Install Go and tools
@@ -80,7 +70,7 @@ jobs:
           echo "Lint the sources..."
           make lint -k
           echo "Testing the sources..."
-          make ${{ inputs.test_command }} -j
+          make go-test -j
 
       - name: Login to Amazon ECR
         id: login-ecr
