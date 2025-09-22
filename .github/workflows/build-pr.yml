@@ -21,16 +21,6 @@ on:
         description: 'Docker image prefix'
         required: true
         type: string
-      build_opt:
-        description: 'Docker build options'
-        required: false
-        type: string
-        default: '--no-cache --pull'
-      test_command:
-        description: 'Test command to run (test or go-test)'
-        required: false
-        type: string
-        default: 'go-test'
       aws_xray_sdk_disabled:
         description: 'Disable AWS X-Ray SDK'
         required: false
@@ -52,8 +42,9 @@ jobs:
     runs-on: ${{ inputs.runs_on }}
     env:
       IMAGE_PREFIX: ${{ inputs.image_prefix }}
-      BUILD_OPT: ${{ inputs.build_opt }}
       AWS_XRAY_SDK_DISABLED: ${{ inputs.aws_xray_sdk_disabled }}
+      INSTALL_GO_VERSION: ${{ inputs.install_go_version }}
+      GOLANGCLI_LINT_VERSION: ${{ inputs.golangci_lint_version }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -61,17 +52,16 @@ jobs:
       - name: Setup environment
         run: |
           echo "SRC=${GITHUB_WORKSPACE}/src" >> $GITHUB_ENV
-          echo "BUILD_OPT=${{ inputs.build_opt }}" >> $GITHUB_ENV
           echo "TAG=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
       
       - name: Install Go and tools
         run: |
           cd /root/.goenv && git pull && cd -
-          goenv install ${{ inputs.install_go_version }} -s
-          goenv global ${{ inputs.install_go_version }}
+          goenv install ${INSTALL_GO_VERSION} -s
+          goenv global ${INSTALL_GO_VERSION}
           go version
           
-          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin ${{ inputs.golangci_lint_version }}
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin ${GOLANGCLI_LINT_VERSION}
           mv $(go env GOPATH)/bin/golangci-lint /usr/local/bin/
           golangci-lint --version
       
@@ -80,7 +70,7 @@ jobs:
           echo "Lint the sources..."
           make lint -k
           echo "Testing the sources..."
-          make ${{ inputs.test_command }} -j
+          make go-test -j
 
       - name: Login to Amazon ECR
         id: login-ecr
@@ -95,4 +85,4 @@ jobs:
       - name: Docker build and tag
         run: |
           echo "Build started on $(date)"
-          make build-ci -j BUILD_OPT="${BUILD_OPT}" IMAGE_TAG=${TAG} IMAGE_PREFIX=${IMAGE_PREFIX} IMAGE_REGISTRY=${{ secrets.DOCKER_REGISTRY }}
+          make build-ci -j BUILD_OPT='--no-cache --pull' IMAGE_TAG=${TAG} IMAGE_PREFIX=${IMAGE_PREFIX} IMAGE_REGISTRY=${{ secrets.DOCKER_REGISTRY }}
