@@ -2,7 +2,7 @@ name: "Devin PR Review"
 
 on:
   pull_request:
-    types: [opened, synchronize]
+    types: [opened, synchronize, reopened]
 
 jobs:
   devin-pr-review:
