@@ -37,9 +37,13 @@ on:
         description: 'Docker registry URL'
         required: true
 
+permissions: {}
+
 jobs:
   build:
     runs-on: ${{ inputs.runs_on }}
+    permissions:
+      contents: read
     env:
       IMAGE_PREFIX: ${{ inputs.image_prefix }}
       AWS_XRAY_SDK_DISABLED: ${{ inputs.aws_xray_sdk_disabled }}
@@ -58,10 +62,12 @@ jobs:
         with:
           go-version: ${{ env.INSTALL_GO_VERSION }}
   
-      - uses: golangci/golangci-lint-action@v6
-        with:
-          version: ${{ env.GOLANGCI_LINT_VERSION }}
-      
+      - name: Install golangci-lint
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin ${GOLANGCI_LINT_VERSION}
+          mv $(go env GOPATH)/bin/golangci-lint /usr/local/bin/
+          golangci-lint --version
+
       - name: Lint and test
         run: |
           echo "Lint the sources..."
