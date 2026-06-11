@@ -2,9 +2,7 @@ name: "Devin PR Review"
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
-  pull_request_target:
-    types: [ready_for_review]
+    types: [opened, synchronize, reopened, ready_for_review]
 
 permissions: {}
 
@@ -13,7 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    if: ${{ !github.event.pull_request.draft }}
+    if: |
+      (github.event_name == 'pull_request' && !github.event.pull_request.draft)
     steps:
       - name: Request Devin Code Review
         env:
