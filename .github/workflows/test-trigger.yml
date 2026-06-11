@@ -9,5 +9,9 @@ permissions: {}
 jobs:
   test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    if: |
+      (github.event_name == 'pull_request' && !github.event.pull_request.draft)
     steps:
       - run: echo "ready_for_review event fired"
